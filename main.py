@@ -38,18 +38,42 @@ from app.menus.store.redemables import show_redeemables_menu
 from app.client.registration import dukcapil
 
 
+# ==================================================
+# GLOBAL STATE
+# ==================================================
 console = Console()
 LAST_CHOICE = None
-THEME = "dark"  # dark | minimal
+THEME = "dark"   # dark | minimal
 
 
+# ==================================================
+# HELPERS (ANTI ERROR + NYAMAN)
+# ==================================================
+def s(val, default="-"):
+    """Safe string for Rich"""
+    if val is None:
+        return default
+    return str(val)
+
+
+def rupiah(val):
+    try:
+        return f"Rp {int(val):,}".replace(",", ".")
+    except Exception:
+        return f"Rp {s(val)}"
+
+
+# ==================================================
+# THEME
+# ==================================================
 THEMES = {
     "dark": {
         "panel": "neon_cyan",
-        "title": "neon_pink",
+        "title": "bold neon_pink",
         "key": "neon_cyan",
         "menu": "bold white",
         "warn": "bold red",
+        "hint": "cyan",
     },
     "minimal": {
         "panel": "white",
@@ -57,12 +81,13 @@ THEMES = {
         "key": "bold white",
         "menu": "white",
         "warn": "bold red",
+        "hint": "dim",
     },
 }
 
 
-def t(key):
-    return THEMES[THEME][key]
+def t(name):
+    return THEMES[THEME][name]
 
 
 def print_panel(content, title):
@@ -76,6 +101,9 @@ def print_panel(content, title):
     )
 
 
+# ==================================================
+# UI
+# ==================================================
 def show_main_menu(profile):
     clear_screen()
 
@@ -83,18 +111,20 @@ def show_main_menu(profile):
         profile["balance_expired_at"]
     ).strftime("%Y-%m-%d")
 
+    # ---------- PROFILE ----------
     profile_table = Table(show_header=False, box=None, padding=(0, 2))
     profile_table.add_column("Key", style=t("key"), justify="right", width=12)
     profile_table.add_column("Value", style="bold white")
 
-    profile_table.add_row("Nomor", profile["number"])
-    profile_table.add_row("Type", profile["subscription_type"])
-    profile_table.add_row("Pulsa", f"Rp {profile['balance']}")
-    profile_table.add_row("Aktif s/d", expired_at)
-    profile_table.add_row("Info", profile["point_info"])
+    profile_table.add_row("Nomor", s(profile["number"]))
+    profile_table.add_row("Type", s(profile["subscription_type"]))
+    profile_table.add_row("Pulsa", rupiah(profile["balance"]))
+    profile_table.add_row("Aktif s/d", s(expired_at))
+    profile_table.add_row("Info", s(profile["point_info"]))
 
     print_panel(profile_table, "USER PROFILE")
 
+    # ---------- MENU ----------
     menu = Table(show_header=True, box=None, padding=(0, 1))
     menu.add_column("ID", style="bold green", justify="right", width=4)
     menu.add_column("MENU", style=t("menu"))
@@ -105,10 +135,7 @@ def show_main_menu(profile):
     menu.add_row("4", "🔥 HOT Package 2")
     menu.add_row("5", "Beli Paket (Option Code)")
     menu.add_row("6", "Beli Paket (Family Code)")
-    menu.add_row(
-        "7",
-        f"[{t('warn')}]⚠ AUTO BUY LOOP (BERBAHAYA)[/]",
-    )
+    menu.add_row("7", f"[{t('warn')}]⚠ AUTO BUY LOOP (BERBAHAYA)[/]")
     menu.add_row("8", "Riwayat Transaksi")
     menu.add_row("9", "Family Plan / Akrab")
     menu.add_row("10", "Circle")
@@ -121,10 +148,17 @@ def show_main_menu(profile):
     menu.add_row("99", "Keluar Aplikasi")
 
     print_panel(menu, "MAIN MENU")
-    console.print("[bold cyan]Pilih menu (ENTER = ulang terakhir) ➜ [/]", end="")
+
+    console.print(
+        f"[{t('hint')}]ENTER = ulang menu terakhir | CTRL+C = keluar[/]\n"
+        f"[bold cyan]Pilih menu ➜ [/]",
+        end="",
+    )
 
 
-
+# ==================================================
+# MAIN LOGIC
+# ==================================================
 def main():
     global LAST_CHOICE, THEME
 
@@ -143,11 +177,10 @@ def main():
                     AuthInstance.api_key,
                     user["tokens"],
                 )
-                point_info = f"Points: {tier.get('current_point')} | Tier: {tier.get('tier')}"
+                point_info = f"Points: {tier.get('current_point', 0)} | Tier: {tier.get('tier', 0)}"
 
             profile = {
                 "number": user["number"],
-                "subscriber_id": user["subscriber_id"],
                 "subscription_type": user["subscription_type"],
                 "balance": balance.get("remaining"),
                 "balance_expired_at": balance.get("expired_at"),
@@ -162,6 +195,7 @@ def main():
             else:
                 LAST_CHOICE = choice
 
+            # -------- MENU HANDLER --------
             if choice == "1":
                 sel = show_account_menu()
                 if sel:
@@ -190,10 +224,14 @@ def main():
 
             elif choice == "7":
                 console.print(
-                    "[bold red]⚠ WARNING: AUTO LOOP PURCHASE[/]\n"
-                    "Tekan CTRL+C untuk batal kapan saja\n"
+                    "[bold red]⚠ PERINGATAN KERAS[/]\n"
+                    "Mode AUTO LOOP dapat menghabiskan pulsa\n"
+                    "Ketik YES untuk lanjut: ",
+                    end="",
                 )
-                pause()
+                if input().strip().upper() != "YES":
+                    continue
+
                 purchase_by_family(
                     input("Family code: "),
                     input("Use decoy? (y/n): ").lower() == "y",
@@ -260,11 +298,13 @@ def main():
                 AuthInstance.set_active_user(sel)
 
 
-
+# ==================================================
+# ENTRY
+# ==================================================
 if __name__ == "__main__":
     try:
         if check_for_updates():
             pause()
         main()
     except KeyboardInterrupt:
-        console.print("\n[red]Application closed[/]")
+        console.print("\n[red]Aplikasi ditutup[/]")
