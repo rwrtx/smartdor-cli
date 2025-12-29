@@ -47,7 +47,7 @@ THEME = "dark"   # dark | minimal
 
 
 # ==================================================
-# HELPERS (ANTI ERROR + NYAMAN)
+# SAFE HELPERS
 # ==================================================
 def s(val, default="-"):
     """Safe string for Rich"""
@@ -64,21 +64,21 @@ def rupiah(val):
 
 
 # ==================================================
-# THEME
+# THEMES (VALID RICH COLORS ONLY)
 # ==================================================
 THEMES = {
     "dark": {
-        "panel": "neon_cyan",
-        "title": "bold neon_pink",
-        "key": "neon_cyan",
+        "panel": "cyan",
+        "title": "bold magenta",
+        "key": "cyan",
         "menu": "bold white",
         "warn": "bold red",
-        "hint": "cyan",
+        "hint": "bright_cyan",
     },
     "minimal": {
         "panel": "white",
         "title": "bold white",
-        "key": "bold white",
+        "key": "white",
         "menu": "white",
         "warn": "bold red",
         "hint": "dim",
@@ -91,14 +91,18 @@ def t(name):
 
 
 def print_panel(content, title):
-    console.print(
-        Panel(
-            Align.left(content),
-            title=f"[{t('title')}]{title}[/]",
-            border_style=t("panel"),
-            padding=(1, 2),
+    try:
+        console.print(
+            Panel(
+                Align.left(content),
+                title=f"[{t('title')}]{title}[/]",
+                border_style=t("panel"),
+                padding=(1, 2),
+            )
         )
-    )
+    except Exception:
+        # fallback super aman
+        console.print(content)
 
 
 # ==================================================
@@ -225,7 +229,7 @@ def main():
             elif choice == "7":
                 console.print(
                     "[bold red]⚠ PERINGATAN KERAS[/]\n"
-                    "Mode AUTO LOOP dapat menghabiskan pulsa\n"
+                    "Mode AUTO LOOP dapat menghabiskan pulsa.\n"
                     "Ketik YES untuk lanjut: ",
                     end="",
                 )
